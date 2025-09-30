@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reportes Técnicos - Equipos Médicos (PWA)</title>
+  <meta name="description" content="App offline para reportes de servicio técnico (equipos médicos): fotos, firma, PDF y almacenamiento local." />
+
+  <!-- Tipografía básica (opcional) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #121a34;
+      --muted: #8aa0c6;
+      --text: #ebf0ff;
+      --accent: #4da3ff;
+      --ok: #1cc88a;
+      --warn: #ffce56;
+      --bad: #e74a3b;
+      --border: #253055;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; padding: 0; font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(180deg, #0a0f1e, #0b1228 40%, #09102a);
+      color: var(--text);
+    }
+    header {
+      position: sticky; top: 0; z-index: 5;
+      background: rgba(9, 16, 42, .7);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 18px; }
+    h1 { margin: 0; font-size: 1.4rem; font-weight: 800; letter-spacing: .2px; }
+    .row { display: grid; grid-template-columns: 1fr; gap: 18px; }
+    @media (min-width: 980px) {
+      .row { grid-template-columns: 490px 1fr; align-items: start; }
+    }
+    .card {
+      background: radial-gradient(1200px 300px at 10% -10%, rgba(77,163,255,.08), transparent 40%),
+                  radial-gradient(900px 300px at 100% -20%, rgba(28,200,138,.07), transparent 40%),
+                  var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    .card h2 { margin: 0 0 10px; font-size: 1.1rem; }
+    label { display: block; margin: 10px 0 6px; color: var(--muted); font-size: .92rem; }
+    input[type="text"], input[type="number"], input[type="date"], input[type="time"], input[type="email"], textarea, select {
+      width: 100%; padding: 12px 12px; border-radius: 12px; border: 1px solid var(--border);
+      background: #0f1732; color: var(--text); outline: none; box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .muted { color: var(--muted); font-size: .9rem; }
+    .btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+    button, .btn {
+      appearance: none; border: 1px solid var(--border); background: #101a35; color: var(--text);
+      border-radius: 14px; padding: 10px 14px; font-weight: 600; cursor: pointer; box-shadow: var(--shadow);
+    }
+    button.primary { background: linear-gradient(180deg, #4da3ff, #2d7bd9); border-color: #2d7bd9; color: #0a0f1e; }
+    button.success { background: linear-gradient(180deg, #1fd79a, #18a877); border-color: #159569; color: #07161a; }
+    button.warn { background: linear-gradient(180deg, #ffd76b, #fabc32); border-color: #f2a701; color: #2a1b00; }
+    button.danger { background: linear-gradient(180deg, #ff7366, #e74a3b); border-color: #c0392b; }
+    .pill { display:inline-block; padding: 6px 10px; border-radius: 999px; border:1px solid var(--border); background:#0f1732; }
+
+    .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; margin-top: 8px; }
+    .thumbs img { width: 100%; height: 74px; object-fit: cover; border-radius: 10px; border:1px solid var(--border); }
+
+    canvas#sigPad { width: 100%; height: 170px; background: #0f1732; border: 1px dashed #2c3b6a; border-radius: 12px; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { color: var(--muted); font-weight: 600; }
+    .right { text-align: right; }
+    .nowrap { white-space: nowrap; }
+    .footer { color: var(--muted); font-size: .85rem; margin-top: 8px; }
+    .tag { font-size: .75rem; color: #b6c7f0; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Reportes Técnicos – Equipos Médicos <span class="tag">(offline + PDF)</span></h1>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="row">
+      <!-- Formulario de captura -->
+      <section class="card">
+        <h2>Nuevo reporte</h2>
+        <form id="reporteForm">
+          <div class="grid-2">
+            <div>
+              <label>Fecha</label>
+              <input type="date" id="fecha" required />
+            </div>
+            <div>
+              <label>Hora</label>
+              <input type="time" id="hora" required />
+            </div>
+          </div>
+
+          <label>Cliente / Clínica / Hospital</label>
+          <input type="text" id="cliente" placeholder="Ej. Clínica Santa María" required />
+
+          <div class="grid-2">
+            <div>
+              <label>Responsable en sitio</label>
+              <input type="text" id="responsable" placeholder="Nombre y apellido" required />
+            </div>
+            <div>
+              <label>Correo del cliente (para enviar PDF)</label>
+              <input type="email" id="correo" placeholder="cliente@ejemplo.com" />
+            </div>
+          </div>
+
+          <h3 class="muted">Equipo atendido</h3>
+          <div class="grid-3">
+            <div>
+              <label>Marca</label>
+              <input type="text" id="marca" required />
+            </div>
+            <div>
+              <label>Modelo</label>
+              <input type="text" id="modelo" required />
+            </div>
+            <div>
+              <label>N° de serie</label>
+              <input type="text" id="serie" required />
+            </div>
+          </div>
+
+          <label>Descripción de falla / solicitud</label>
+          <textarea id="falla" required></textarea>
+
+          <label>Acciones realizadas / diagnóstico</label>
+          <textarea id="acciones" required></textarea>
+
+          <div class="grid-3">
+            <div>
+              <label>Repuestos utilizados</label>
+              <input type="text" id="repuestos" placeholder="Separar por coma" />
+            </div>
+            <div>
+              <label>Horas trabajadas</label>
+              <input type="number" id="horas" step="0.1" min="0" value="1" />
+            </div>
+            <div>
+              <label>Estado final</label>
+              <select id="estado">
+                <option>Operativo</option>
+                <option>Operativo con observaciones</option>
+                <option>En espera de repuesto</option>
+                <option>No operativo</option>
+              </select>
+            </div>
+          </div>
+
+          <label>Fotografías (evidencia) <span class="muted">— usa la cámara del móvil</span></label>
+          <input type="file" id="fotos" accept="image/*" capture="environment" multiple />
+          <div id="thumbs" class="thumbs"></div>
+
+          <label>Logo de tu empresa (opcional, aparece en PDF)</label>
+          <input type="file" id="logo" accept="image/*" />
+
+          <label>Firma del cliente</label>
+          <canvas id="sigPad"></canvas>
+          <div class="btns">
+            <button type="button" id="limpiarFirma" class="btn">Limpiar firma</button>
+          </div>
+
+          <div class="btns">
+            <button type="button" class="primary" id="guardar">Guardar local</button>
+            <button type="button" class="success" id="pdf">Generar PDF</button>
+            <button type="reset" class="danger">Limpiar formulario</button>
+          </div>
+          <div class="footer">Los datos se guardan localmente (IndexedDB). Funciona sin conexión tras la primera carga.</div>
+        </form>
+      </section>
+
+      <!-- Lista de reportes -->
+      <section class="card">
+        <h2>Reportes guardados</h2>
+        <table>
+          <thead>
+            <tr><th>Fecha</th><th>Cliente</th><th>Equipo</th><th class="right">Acciones</th></tr>
+          </thead>
+          <tbody id="tabla"></tbody>
+        </table>
+        <div class="btns">
+          <button id="exportarTodo" class="btn">Exportar JSON</button>
+          <button id="importarBtn" class="btn">Importar JSON</button>
+          <input type="file" id="importarInput" accept="application/json" style="display:none" />
+          <span class="pill" id="estadoOffline">⏳ Comprobando offline…</span>
+        </div>
+      </section>
+    </div>
+
+    <p class="footer">Sugerencia: comparte el PDF por WhatsApp/Correo desde el gestor de archivos del móvil tras generarlo.</p>
+  </main>
+
+  <!-- Librerías CDN (se cachean con Service Worker para uso offline) -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@5.0.0/dist/signature_pad.umd.min.js"></script>
+
+  <script>
+    /******************** Utilidades IndexedDB (mínimas) ********************/
+    const DB_NAME = 'reportes-tecnicos-db';
+    const STORE = 'reportes';
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function dbPut(obj) {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put(obj);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+    async function dbGetAll() {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function dbDelete(id) {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    /******************** Firma ********************/
+    const canvas = document.getElementById('sigPad');
+    const signaturePad = new SignaturePad.SignaturePad(canvas, {backgroundColor: 'rgba(0,0,0,0)'});
+    function resizeCanvas() {
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      canvas.width = canvas.offsetWidth * ratio;
+      canvas.height = canvas.offsetHeight * ratio;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(ratio, ratio);
+      signaturePad.clear();
+    }
+    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('orientationchange', resizeCanvas);
+    resizeCanvas();
+
+    document.getElementById('limpiarFirma').addEventListener('click', () => signaturePad.clear());
+
+    /******************** Fotos – previews ********************/
+    const fotosInput = document.getElementById('fotos');
+    const thumbs = document.getElementById('thumbs');
+    let fotosDataURLs = [];
+    fotosInput.addEventListener('change', async (ev) => {
+      thumbs.innerHTML = '';
+      fotosDataURLs = [];
+      const files = Array.from(ev.target.files || []);
+      for (const f of files) {
+        const url = await fileToDataURL(f);
+        fotosDataURLs.push(url);
+        const img = document.createElement('img'); img.src = url; thumbs.appendChild(img);
+      }
+    });
+
+    const logoInput = document.getElementById('logo');
+    let logoDataURL = null;
+    logoInput.addEventListener('change', async (ev) => {
+      const f = ev.target.files?.[0];
+      logoDataURL = f ? await fileToDataURL(f) : null;
+    });
+
+    function fileToDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    /******************** Inicializar fecha/hora ********************/
+    function pad2(n){return (n<10?'0':'')+n}
+    function initFechaHora(){
+      const d = new Date();
+      document.getElementById('fecha').value = d.toISOString().slice(0,10);
+      document.getElementById('hora').value = pad2(d.getHours())+":"+pad2(d.getMinutes());
+    }
+    initFechaHora();
+
+    /******************** Guardar reporte ********************/
+    function formDataToObj(){
+      const get = id => document.getElementById(id).value.trim();
+      const firma = signaturePad.isEmpty() ? null : signaturePad.toDataURL('image/png');
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+      return {
+        id,
+        fecha: get('fecha'),
+        hora: get('hora'),
+        cliente: get('cliente'),
+        responsable: get('responsable'),
+        correo: get('correo'),
+        marca: get('marca'),
+        modelo: get('modelo'),
+        serie: get('serie'),
+        falla: get('falla'),
+        acciones: get('acciones'),
+        repuestos: get('repuestos'),
+        horas: get('horas'),
+        estado: get('estado'),
+        fotos: fotosDataURLs,
+        logo: logoDataURL,
+        firma
+      };
+    }
+
+    async function guardarLocal(){
+      const obj = formDataToObj();
+      await dbPut(obj);
+      renderTabla();
+      toast('Guardado localmente');
+    }
+    document.getElementById('guardar').addEventListener('click', guardarLocal);
+
+    /******************** Render tabla ********************/
+    async function renderTabla(){
+      const tbody = document.getElementById('tabla');
+      const datos = await dbGetAll();
+      datos.sort((a,b)=> (b.fecha+b.hora).localeCompare(a.fecha+a.hora));
+      tbody.innerHTML = '';
+      for (const r of datos){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="nowrap">${r.fecha} ${r.hora}</td>
+          <td>${escapeHTML(r.cliente)}</td>
+          <td>${escapeHTML(r.marca)} ${escapeHTML(r.modelo)} <span class="muted">#${escapeHTML(r.serie)}</span></td>
+          <td class="right">
+            <button class="btn" data-act="pdf" data-id="${r.id}">PDF</button>
+            <button class="btn" data-act="view" data-id="${r.id}">Cargar</button>
+            <button class="btn" data-act="del" data-id="${r.id}">Borrar</button>
+          </td>`;
+        tbody.appendChild(tr);
+      }
+
+      tbody.querySelectorAll('button').forEach(btn => btn.addEventListener('click', async ev => {
+        const id = ev.currentTarget.dataset.id;
+        const act = ev.currentTarget.dataset.act;
+        const all = await dbGetAll();
+        const r = all.find(x=>x.id===id);
+        if (!r) return;
+        if (act==='del') { await dbDelete(id); renderTabla(); toast('Eliminado'); return; }
+        if (act==='view') { loadToForm(r); toast('Reporte cargado en el formulario'); return; }
+        if (act==='pdf') { generarPDF(r); return; }
+      }));
+    }
+
+    function loadToForm(r){
+      document.getElementById('fecha').value = r.fecha;
+      document.getElementById('hora').value = r.hora;
+      document.getElementById('cliente').value = r.cliente;
+      document.getElementById('responsable').value = r.responsable;
+      document.getElementById('correo').value = r.correo || '';
+      document.getElementById('marca').value = r.marca;
+      document.getElementById('modelo').value = r.modelo;
+      document.getElementById('serie').value = r.serie;
+      document.getElementById('falla').value = r.falla;
+      document.getElementById('acciones').value = r.acciones;
+      document.getElementById('repuestos').value = r.repuestos || '';
+      document.getElementById('horas').value = r.horas || '';
+      document.getElementById('estado').value = r.estado || 'Operativo';
+      fotosDataURLs = r.fotos || [];
+      thumbs.innerHTML = '';
+      for (const url of fotosDataURLs){ const img = document.createElement('img'); img.src = url; thumbs.appendChild(img); }
+      logoDataURL = r.logo || null;
+      signaturePad.clear();
+      if (r.firma){ const img = new Image(); img.onload = ()=>{
+        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      }; img.src = r.firma; }
+    }
+
+    function escapeHTML(str=''){ return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
+
+    /******************** PDF ********************/
+    async function generarPDF(sourceObj){
+      const obj = sourceObj || formDataToObj();
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({unit:'pt', format:'a4'});
+      const M = 48; let y = M;
+
+      // Encabezado: logo + título
+      if (obj.logo){
+        try { doc.addImage(obj.logo, 'PNG', M, y, 90, 42); } catch(e) {}
+      }
+      doc.setFont('helvetica','bold'); doc.setFontSize(16);
+      doc.text('REPORTE DE SERVICIO TÉCNICO – EQUIPOS MÉDICOS', M + (obj.logo? 100:0), y+20);
+      doc.setFont('helvetica','normal'); doc.setFontSize(10);
+      doc.setTextColor(120,140,170);
+      doc.text(`Fecha: ${obj.fecha}  Hora: ${obj.hora}`, M, y+60);
+      y += 78; doc.setTextColor(30,40,60);
+
+      // Bloque cliente
+      y = writeBlock(doc, 'Cliente / Sitio', [
+        ['Cliente', obj.cliente],
+        ['Responsable en sitio', obj.responsable],
+        ['Correo', obj.correo || '-']
+      ], M, y);
+
+      // Bloque equipo
+      y = writeBlock(doc, 'Equipo', [
+        ['Marca', obj.marca],
+        ['Modelo', obj.modelo],
+        ['N° Serie', obj.serie],
+        ['Estado final', obj.estado]
+      ], M, y);
+
+      // Texto largo
+      y = writeMultiline(doc, 'Descripción de falla / solicitud', obj.falla, M, y);
+      y = writeMultiline(doc, 'Acciones realizadas / diagnóstico', obj.acciones, M, y);
+
+      // Repuestos / horas
+      y = writeBlock(doc, 'Recursos', [
+        ['Repuestos', obj.repuestos || '-'],
+        ['Horas trabajadas', obj.horas || '-']
+      ], M, y);
+
+      // Fotos (en filas de 2)
+      if (obj.fotos && obj.fotos.length){
+        doc.setFont('helvetica','bold'); doc.setFontSize(12);
+        y = ensurePage(doc, y, 24, M);
+        doc.text('Evidencia fotográfica', M, y); y += 10;
+        const W = 240, H = 160, GAP = 20;
+        for (let i=0;i<obj.fotos.length;i++){
+          if (i%2===0) { y = ensurePage(doc, y, H+GAP, M); }
+          const x = M + (i%2)*(W+GAP);
+          try { doc.addImage(obj.fotos[i], 'JPEG', x, y, W, H); } catch(e) {}
+          if (i%2===1) y += H + GAP;
+        }
+        if (obj.fotos.length%2===1) y += H + GAP;
+      }
+
+      // Firma
+      doc.setFont('helvetica','bold'); doc.setFontSize(12);
+      y = ensurePage(doc, y, 120, M);
+      doc.text('Firma del cliente / conformidad', M, y);
+      if (obj.firma){ try { doc.addImage(obj.firma, 'PNG', M, y+10, 240, 80); } catch(e) {} }
+      doc.setFont('helvetica','normal'); doc.setFontSize(9);
+      doc.text(`${obj.cliente} – ${obj.responsable}`, M, y+100);
+
+      // Pie
+      doc.setDrawColor(200,210,230); doc.line(M, 800, 595-M, 800);
+      doc.setFontSize(8); doc.setTextColor(120,140,170);
+      doc.text('Generado con app local (PWA) – Funciona offline. ©', M, 812);
+
+      const nombre = `Reporte_${obj.fecha}_${obj.cliente.replace(/[^a-z0-9\-_]+/gi,'_')}.pdf`;
+      doc.save(nombre);
+    }
+
+    function writeBlock(doc, title, pairs, M, y){
+      doc.setFont('helvetica','bold'); doc.setFontSize(12);
+      y = ensurePage(doc, y, 18 + pairs.length*16, M);
+      doc.text(title, M, y); y += 8;
+      doc.setFont('helvetica','normal'); doc.setFontSize(10);
+      const colW = 150;
+      pairs.forEach(([k,v]) => { y += 14; doc.text(`${k}:`, M, y); doc.text(String(v||'-'), M+colW, y); });
+      y += 10; return y;
+    }
+
+    function writeMultiline(doc, title, text, M, y){
+      doc.setFont('helvetica','bold'); doc.setFontSize(12);
+      const lines = doc.splitTextToSize(String(text||'-'), 595 - 2*M);
+      y = ensurePage(doc, y, 24 + lines.length*12, M);
+      doc.text(title, M, y); y += 12;
+      doc.setFont('helvetica','normal'); doc.setFontSize(10);
+      lines.forEach(line => { y += 12; doc.text(line, M, y); });
+      y += 10; return y;
+    }
+
+    function ensurePage(doc, y, needed, M){
+      const H = doc.internal.pageSize.getHeight();
+      if (y + needed > H - 60) { doc.addPage(); return 48; }
+      return y;
+    }
+
+    /******************** Exportar / Importar ********************/
+    document.getElementById('exportarTodo').addEventListener('click', async ()=>{
+      const datos = await dbGetAll();
+      const blob = new Blob([JSON.stringify(datos, null, 2)], {type:'application/json'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'reportes_backup.json'; a.click();
+    });
+    document.getElementById('importarBtn').addEventListener('click', ()=> document.getElementById('importarInput').click());
+    document.getElementById('importarInput').addEventListener('change', async ev =>{
+      const file = ev.target.files?.[0]; if (!file) return;
+      const text = await file.text();
+      try {
+        const arr = JSON.parse(text);
+        for (const r of arr) await dbPut(r);
+        renderTabla();
+        toast('Importado');
+      } catch(e){ alert('Archivo inválido'); }
+    });
+
+    /******************** Botón PDF directo del form ********************/
+    document.getElementById('pdf').addEventListener('click', ()=> generarPDF());
+
+    /******************** Toaster ********************/
+    function toast(msg){
+      const d = document.createElement('div');
+      d.textContent = msg;
+      d.style.cssText = 'position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#101a35;border:1px solid #253055;padding:10px 14px;border-radius:12px;box-shadow:var(--shadow);z-index:9999;color:#ebf0ff;';
+      document.body.appendChild(d); setTimeout(()=> d.remove(), 2200);
+    }
+
+    /******************** Service Worker (inline via Blob) ********************/
+    const SW_CODE = `
+      const CACHE = 'reptec-cache-v1';
+      const ASSETS = [
+        self.location.href,
+        'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+        'https://cdn.jsdelivr.net/npm/signature_pad@5.0.0/dist/signature_pad.umd.min.js'
+      ];
+      self.addEventListener('install', evt => {
+        evt.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(()=> self.skipWaiting()));
+      });
+      self.addEventListener('activate', evt => { evt.waitUntil(self.clients.claim()); });
+      self.addEventListener('fetch', evt => {
+        const req = evt.request;
+        evt.respondWith(
+          caches.match(req).then(res => res || fetch(req).then(r => {
+            const copy = r.clone();
+            if (req.method === 'GET' && (req.url.startsWith('http'))) {
+              caches.open(CACHE).then(c => c.put(req, copy)).catch(()=>{});
+            }
+            return r;
+          }).catch(()=> caches.match(self.location.href)))
+        );
+      });
+    `;
+
+    if ('serviceWorker' in navigator) {
+      const blob = new Blob([SW_CODE], {type:'text/javascript'});
+      const swUrl = URL.createObjectURL(blob);
+      navigator.serviceWorker.register(swUrl).then(()=>{
+        document.getElementById('estadoOffline').textContent = '✅ Offline listo';
+      }).catch(()=>{
+        document.getElementById('estadoOffline').textContent = '⚠️ Offline no disponible';
+      });
+    } else {
+      document.getElementById('estadoOffline').textContent = '⚠️ Navegador sin Service Worker';
+    }
+
+    // Render inicial
+    renderTabla();
+  </script>
+</body>
+</html>
