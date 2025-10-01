@@ -417,6 +417,7 @@
       </section>
     </form>
   </main>
+
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script>
@@ -472,18 +473,16 @@
       syncReportNumberInput();
     };
 
-    let cachedLogoImage = null;
-    const BRAND_LOGO_DATA_URL = `data:image/png;base64, …cadena recortada…`;
+    const BRAND_LOGO_DATA_URL = 'data:image/png;base64,REEMPLAZA_AQUÍ_CON_EL_BASE64_DEL_LOGO';
 
     if (brandLogoImage) {
       brandLogoImage.addEventListener('error', () => {
         brandLogoImage.src = BRAND_LOGO_DATA_URL;
       });
     }
+
     const ensureLogoImage = async () => {
-      if (cachedLogoImage) return cachedLogoImage;
-      cachedLogoImage = BRAND_LOGO_DATA_URL;
-      return cachedLogoImage;
+      return BRAND_LOGO_DATA_URL;
     };
 
     const signatureConfigs = [
@@ -649,7 +648,7 @@
 
       const addLongField = (label, value) => {
         const text = value ? String(value).trim() : '';
-        const content = pdf.splitTextToSize(text || '—', pageWidth - margin * 2);
+               const content = pdf.splitTextToSize(text || '—', pageWidth - margin * 2);
         const sectionHeight = lineHeight * (content.length + 1) + 4;
         ensureSpace(sectionHeight);
         pdf.setFont('helvetica', 'bold');
