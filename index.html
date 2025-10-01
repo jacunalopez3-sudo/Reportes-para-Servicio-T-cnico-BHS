@@ -15,7 +15,7 @@
       color-scheme: light dark;
       --bg: #f5f7fb;
       --card: #ffffff;
-      --accent: #1f6feb;
+      --accent: #1f57b7;
       --border: #d0d7de;
       --text: #0f172a;
       --muted: #475569;
@@ -70,32 +70,10 @@
       justify-items: center;
     }
 
-    .logo-figure {
-      margin: 0;
-      padding: 12px;
-      border-radius: 16px;
-      border: 1px solid var(--border);
-      background: #ffffff;
-      width: clamp(180px, 26vw, 240px);
-      display: grid;
-      gap: 12px;
-      justify-items: center;
-      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
-    }
-
-    .logo-figure svg {
-      width: 100%;
+    .logo-image {
+      width: clamp(200px, 32vw, 260px);
       height: auto;
       display: block;
-    }
-
-    .logo-caption {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      font-weight: 600;
-      text-align: center;
     }
 
     header h1 {
@@ -161,7 +139,7 @@
     .file-input:focus-visible {
       outline: none;
       border-color: var(--accent);
-      box-shadow: 0 0 0 4px rgba(31, 111, 235, 0.15);
+      box-shadow: 0 0 0 4px rgba(31, 87, 183, 0.15);
     }
 
     textarea {
@@ -319,45 +297,13 @@
     <header>
       <div class="header-top">
         <div class="logo-wrapper">
-          <figure class="logo-figure">
-            <svg
-              viewBox="0 0 640 220"
-              role="img"
-              aria-labelledby="logoTitle logoDesc"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <title id="logoTitle">Bennu Healthcare Solutions</title>
-              <desc id="logoDesc">Marca fija de Bennu Healthcare Solutions</desc>
-              <rect x="0" y="0" width="220" height="220" rx="24" fill="#2966c6" />
-              <path
-                d="M36 50c40-28 82 20 120-6M32 108c42-26 86 24 124-6M38 166c42-24 86 24 126-4"
-                fill="none"
-                stroke="#ffffff"
-                stroke-width="14"
-                stroke-linecap="round"
-              />
-              <text
-                x="260"
-                y="110"
-                font-family="'Inter', 'Segoe UI', sans-serif"
-                font-size="80"
-                font-weight="700"
-                fill="#1f6feb"
-              >
-                Bennu
-              </text>
-              <text
-                x="260"
-                y="160"
-                font-family="'Inter', 'Segoe UI', sans-serif"
-                font-size="40"
-                fill="#475569"
-              >
-                Healthcare Solutions
-              </text>
-            </svg>
-            <figcaption class="logo-caption">Identidad corporativa</figcaption>
-          </figure>
+          <img
+            id="brand-logo"
+            class="logo-image"
+            src="assets/bennu-logo.png"
+            alt="Bennu Healthcare Solutions"
+            decoding="async"
+          />
         </div>
         <div class="header-text">
           <h1>Reporte de Servicio Técnico</h1>
@@ -373,6 +319,10 @@
       <section class="field-group">
         <h2>Datos generales</h2>
         <div class="field-grid">
+          <label>
+            Número de reporte
+            <input type="text" id="report-number" name="reportNumber" readonly />
+          </label>
           <label>
             Fecha
             <input type="date" id="date" name="date" required />
@@ -467,15 +417,74 @@
       </section>
     </form>
   </main>
-
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script>
     const form = document.getElementById('report-form');
     const dateInput = document.getElementById('date');
+    const reportNumberInput = document.getElementById('report-number');
     const photoInput = document.getElementById('photos');
     const photoPreview = document.getElementById('photo-preview');
     const downloadButton = document.getElementById('download-pdf');
+    const brandLogoImage = document.getElementById('brand-logo');
+
+    const REPORT_COUNTER_KEY = 'reportCounter';
+    let reportCounter = 1;
+
+    const formatReportNumber = (value) => String(value).padStart(2, '0');
+
+    const readReportCounter = () => {
+      try {
+        const storedValue = localStorage.getItem(REPORT_COUNTER_KEY);
+        const parsedValue = storedValue ? Number.parseInt(storedValue, 10) : NaN;
+        if (Number.isInteger(parsedValue) && parsedValue > 0) {
+          return parsedValue;
+        }
+      } catch (error) {
+        console.warn('No se pudo leer el consecutivo almacenado.', error);
+      }
+      return 1;
+    };
+
+    const writeReportCounter = (value) => {
+      try {
+        localStorage.setItem(REPORT_COUNTER_KEY, String(value));
+      } catch (error) {
+        console.warn('No se pudo guardar el consecutivo del reporte.', error);
+      }
+    };
+
+    const syncReportNumberInput = () => {
+      if (reportNumberInput) {
+        reportNumberInput.value = formatReportNumber(reportCounter);
+      }
+    };
+
+    const initializeReportCounter = () => {
+      reportCounter = readReportCounter();
+      writeReportCounter(reportCounter);
+      syncReportNumberInput();
+    };
+
+    const advanceReportCounter = () => {
+      reportCounter += 1;
+      writeReportCounter(reportCounter);
+      syncReportNumberInput();
+    };
+
+    let cachedLogoImage = null;
+    const BRAND_LOGO_DATA_URL = `data:image/png;base64, …cadena recortada…`;
+
+    if (brandLogoImage) {
+      brandLogoImage.addEventListener('error', () => {
+        brandLogoImage.src = BRAND_LOGO_DATA_URL;
+      });
+    }
+    const ensureLogoImage = async () => {
+      if (cachedLogoImage) return cachedLogoImage;
+      cachedLogoImage = BRAND_LOGO_DATA_URL;
+      return cachedLogoImage;
+    };
 
     const signatureConfigs = [
       {
@@ -564,60 +573,6 @@
       const pageHeight = pdf.internal.pageSize.getHeight();
       let cursorY = margin;
 
-      const drawBranding = () => {
-        const brandX = margin;
-        const brandY = margin;
-        const squareSize = 24;
-        const textX = brandX + squareSize + 8;
-
-        pdf.setFillColor(41, 102, 198);
-        pdf.roundedRect(brandX, brandY, squareSize, squareSize, 2, 2, 'F');
-
-        pdf.setDrawColor(255, 255, 255);
-        pdf.setLineWidth(1.4);
-        pdf.line(brandX + 4, brandY + 7, brandX + squareSize - 4, brandY + 5);
-        pdf.line(brandX + 4, brandY + 12, brandX + squareSize - 4, brandY + 14);
-        pdf.line(brandX + 4, brandY + squareSize - 6, brandX + squareSize - 4, brandY + squareSize - 8);
-
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(16);
-        pdf.setTextColor(31, 111, 235);
-        pdf.text('Bennu', textX, brandY + 12);
-
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(9);
-        pdf.setTextColor(71, 85, 105);
-        pdf.text('Healthcare Solutions', textX, brandY + 18);
-
-        pdf.setTextColor(15, 23, 42);
-        cursorY = Math.max(cursorY, brandY + squareSize) + 10;
-      };
-
-      drawBranding();
-
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(18);
-      pdf.setTextColor(31, 111, 235);
-      pdf.text('Reporte de Servicio Técnico', margin, cursorY);
-      cursorY += 12;
-
-      pdf.setTextColor(15, 23, 42);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(11);
-
-      const addSection = (label, value) => {
-        const text = value ? String(value).trim() : 'N/A';
-        const content = pdf.splitTextToSize(text || 'N/A', pageWidth - margin * 2);
-        const sectionHeight = lineHeight + content.length * lineHeight + 4;
-        ensureSpace(sectionHeight);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(15, 23, 42);
-        pdf.text(`${label}:`, margin, cursorY);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(content, margin, cursorY + lineHeight);
-        cursorY += sectionHeight;
-      };
-
       const ensureSpace = (spaceNeeded) => {
         if (cursorY + spaceNeeded > pageHeight - margin) {
           pdf.addPage();
@@ -625,40 +580,141 @@
         }
       };
 
-      addSection('Fecha', dateInput.value);
-      addSection('Centro médico', document.getElementById('medical-center').value);
-      addSection('Equipo', document.getElementById('equipment').value);
-      addSection('Modelo', document.getElementById('model').value);
-      addSection('Serie', document.getElementById('serial').value);
-      addSection('Actuaciones', document.getElementById('actions').value);
-      addSection('Ingeniero', document.getElementById('engineer').value);
-      addSection('Trabajo realizado', document.getElementById('work-done').value);
-      addSection('Observaciones / Recomendaciones', document.getElementById('observations').value);
-
-      const addSignatureToPdf = (label, pad) => {
-        if (pad.isEmpty()) return;
-        const signatureData = pad.toDataURL('image/png');
-        const { width, height } = pdf.getImageProperties(signatureData);
-        const availableWidth = pageWidth - margin * 2;
-        const maxHeight = 60;
-        let drawWidth = availableWidth;
-        let drawHeight = (height * drawWidth) / width;
-        if (drawHeight > maxHeight) {
-          drawHeight = maxHeight;
-          drawWidth = (width * drawHeight) / height;
-        }
-        ensureSpace(drawHeight + 16);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(`${label}:`, margin, cursorY);
-        cursorY += lineHeight;
-        pdf.addImage(signatureData, 'PNG', margin, cursorY, drawWidth, drawHeight);
-        cursorY += drawHeight + 8;
+      const drawBranding = async () => {
+        const logoImage = await ensureLogoImage();
+        const { width, height } = pdf.getImageProperties(logoImage);
+        const targetWidth = 70;
+        const targetHeight = (height * targetWidth) / width;
+        ensureSpace(targetHeight + 4);
+        pdf.addImage(logoImage, 'PNG', margin, cursorY, targetWidth, targetHeight);
+        cursorY += targetHeight + 8;
       };
 
-      signatureConfigs.forEach(({ pdfLabel, pad }) => addSignatureToPdf(pdfLabel, pad));
+      await drawBranding();
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(18);
+      pdf.setTextColor(31, 87, 183);
+      pdf.text('Reporte de Servicio Técnico', margin, cursorY);
+      cursorY += 10;
+
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(15, 23, 42);
+
+      const addSectionTitle = (title) => {
+        ensureSpace(lineHeight * 3);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(14);
+        pdf.setTextColor(31, 87, 183);
+        pdf.text(title, margin, cursorY);
+        cursorY += lineHeight * 1.6;
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(15, 23, 42);
+      };
+
+      const renderFieldGrid = (fields, columns = 2) => {
+        const columnGap = 10;
+        const columnWidth =
+          (pageWidth - margin * 2 - columnGap * (columns - 1)) / columns;
+
+        for (let index = 0; index < fields.length; index += columns) {
+          const rowFields = fields.slice(index, index + columns);
+          const rowData = rowFields.map((field) => {
+            const value = field.value ? String(field.value).trim() : '';
+            const content = pdf.splitTextToSize(value || '—', columnWidth);
+            const height = lineHeight * (content.length + 1);
+            return { field, content, height };
+          });
+
+          const rowHeight = Math.max(...rowData.map((item) => item.height));
+          ensureSpace(rowHeight + lineHeight);
+
+          rowData.forEach((item, columnIndex) => {
+            const x = margin + (columnWidth + columnGap) * columnIndex;
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(71, 85, 105);
+            pdf.text(item.field.label, x, cursorY);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(15, 23, 42);
+            pdf.text(item.content, x, cursorY + lineHeight);
+          });
+
+          cursorY += rowHeight + lineHeight / 2;
+        }
+
+        cursorY += lineHeight / 2;
+      };
+
+      const addLongField = (label, value) => {
+        const text = value ? String(value).trim() : '';
+        const content = pdf.splitTextToSize(text || '—', pageWidth - margin * 2);
+        const sectionHeight = lineHeight * (content.length + 1) + 4;
+        ensureSpace(sectionHeight);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(71, 85, 105);
+        pdf.text(label, margin, cursorY);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(15, 23, 42);
+        pdf.text(content, margin, cursorY + lineHeight);
+        cursorY += sectionHeight;
+        cursorY += lineHeight / 2;
+      };
+
+      addSectionTitle('Datos generales');
+      renderFieldGrid(
+        [
+          { label: 'Número de reporte', value: reportNumberInput.value },
+          { label: 'Fecha', value: dateInput.value },
+          { label: 'Centro médico', value: document.getElementById('medical-center').value },
+          { label: 'Equipo', value: document.getElementById('equipment').value },
+          { label: 'Modelo', value: document.getElementById('model').value },
+          { label: 'Serie', value: document.getElementById('serial').value },
+          { label: 'Actuaciones', value: document.getElementById('actions').value },
+          { label: 'Ingeniero', value: document.getElementById('engineer').value }
+        ],
+        2
+      );
+
+      addSectionTitle('Detalle del servicio');
+      addLongField('Trabajo realizado', document.getElementById('work-done').value);
+      addLongField(
+        'Observaciones o recomendaciones',
+        document.getElementById('observations').value
+      );
+
+      const signatures = signatureConfigs
+        .map(({ pdfLabel, pad }) => ({ label: pdfLabel, pad }))
+        .filter(({ pad }) => !pad.isEmpty());
+
+      if (signatures.length) {
+        addSectionTitle('Firmas');
+        signatures.forEach(({ label, pad }) => {
+          const signatureData = pad.toDataURL('image/png');
+          const { width, height } = pdf.getImageProperties(signatureData);
+          const availableWidth = pageWidth - margin * 2;
+          const maxHeight = 60;
+          let drawWidth = availableWidth;
+          let drawHeight = (height * drawWidth) / width;
+          if (drawHeight > maxHeight) {
+            drawHeight = maxHeight;
+            drawWidth = (width * drawHeight) / height;
+          }
+          const blockHeight = lineHeight + drawHeight + 6;
+          ensureSpace(blockHeight);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(71, 85, 105);
+          pdf.text(label, margin, cursorY);
+          pdf.addImage(signatureData, 'PNG', margin, cursorY + lineHeight, drawWidth, drawHeight);
+          cursorY += blockHeight;
+        });
+        cursorY += lineHeight / 2;
+      }
 
       const imageFiles = Array.from(photoInput.files || []).filter((file) => file.type.startsWith('image/'));
       if (imageFiles.length) {
+        addSectionTitle('Fotografías');
         const images = await Promise.all(imageFiles.map(readFileAsDataURL));
         images.forEach((image, index) => {
           const { width, height } = pdf.getImageProperties(image.dataUrl);
@@ -670,22 +726,29 @@
             drawHeight = maxHeight;
             drawWidth = (width * drawHeight) / height;
           }
-          ensureSpace(drawHeight + 18);
+          const imageBlockHeight = lineHeight + drawHeight + 6;
+          ensureSpace(imageBlockHeight);
           pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(71, 85, 105);
           pdf.text(`Fotografía ${index + 1}`, margin, cursorY);
-          cursorY += lineHeight;
-          pdf.addImage(image.dataUrl, 'PNG', margin, cursorY, drawWidth, drawHeight);
-          cursorY += drawHeight + 4;
+          pdf.addImage(image.dataUrl, 'PNG', margin, cursorY + lineHeight, drawWidth, drawHeight);
+          cursorY += lineHeight + drawHeight + 4;
           if (image.name) {
             pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(15, 23, 42);
             const caption = pdf.splitTextToSize(image.name, pageWidth - margin * 2);
             pdf.text(caption, margin, cursorY);
-            cursorY += caption.length * lineHeight + 4;
+            cursorY += caption.length * lineHeight + 2;
           }
+          cursorY += 2;
         });
+        cursorY += lineHeight / 2;
       }
 
-      pdf.save(`Reporte-${dateInput.value || 'servicio'}.pdf`);
+      const currentReportNumber = reportNumberInput.value || formatReportNumber(reportCounter);
+      const fileDate = dateInput.value || 'servicio';
+      pdf.save(`Reporte-${currentReportNumber}-${fileDate}.pdf`);
+      advanceReportCounter();
     };
 
     photoInput.addEventListener('change', (event) => {
@@ -721,6 +784,7 @@
         signatureConfigs.forEach(({ pad }) => pad.clear());
         photoPreview.innerHTML = '';
         ensureToday();
+        syncReportNumberInput();
       }, 0);
     });
 
@@ -728,9 +792,13 @@
 
     window.addEventListener('load', () => {
       ensureToday();
+      initializeReportCounter();
       resizeAllCanvases();
       renderPhotoPreview([]);
+      ensureLogoImage().catch(() => {});
     });
   </script>
 </body>
 </html>
+
+    
